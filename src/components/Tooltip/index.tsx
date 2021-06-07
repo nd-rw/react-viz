@@ -5,7 +5,7 @@ import { Box } from '@chakra-ui/react'
 
 
 // TODO
-// create categorical axis
+// create categorical axis [x]
 // create function that takes mock data and creates x-axis values
 // create buy-leg scale and sell-leg scale
 // create position scale (buy leg + sell leg scales)
@@ -19,6 +19,45 @@ const margin = {
     left: 50,
 };
 
+const positionData = {
+    "margin": 5234098,
+    "purchaseLegSummary": {
+        "total": -19222841.5,
+        "purchaseCosts": -28712841.5,
+        "salesRevenue": 0,
+        "transport": 0,
+        "portCharges": 3440000,
+        "fuelCosts": 4550000,
+        "repositioning": 0,
+        "canal": 1500000,
+        "other": 0
+    },
+    "saleLegSummary": {
+        "total": 24456939.5,
+        "purchaseCosts": 0,
+        "salesRevenue": 20256939.5,
+        "transport": 0,
+        "portCharges": 0,
+        "fuelCosts": 4000000,
+        "repositioning": 0,
+        "canal": 200000,
+        "other": 0
+    }
+}
+
+const legData = {
+    "total": -19222841.5,
+    "purchaseCosts": -28712841.5,
+    "salesRevenue": 0,
+    "transport": 0,
+    "portCharges": 3440000,
+    "fuelCosts": 4550000,
+    "repositioning": 0,
+    "canal": 1500000,
+    "other": 0
+};
+
+const barColourTypes: { [index: string]: any } = { total: '#006999', revenue: '#4CB3AB', cost: '#CA6E79'}
 
 export default function Tooltip() {
 
@@ -68,6 +107,51 @@ export default function Tooltip() {
         const currentMetricAmount = bAmounts[metric];
         const difference = priorMetricAmount - currentMetricAmount;
     }
+
+    function getBarType(filteredObj:any, key:string) {
+        if (key === 'total' || key === 'margin') {
+            return 'total'
+        }
+        return isNegative(filteredObj[key]) ? 'cost' : 'revenue'
+    }
+
+    const isNegative = (number: number) => { return number < 0 ? true : false };
+    
+
+    const getBarObj = (filteredObj: any, key: string) => { return { name: key, value: filteredObj[key], type: getBarType(filteredObj, key)} }
+
+    function filterLegData(data: any) {
+        const notZeroVals = Object.keys(data).filter(key => data[key] !== 0)
+        const filteredObj:{ [index: string]: any } = Object.keys(data)
+            .filter(key => notZeroVals.includes(key))
+            .reduce((obj, key) => {
+                return {
+                    ...obj,
+                    [key]: data[key]
+                };
+            }, {});
+        const filteredData = []
+        for (const key in filteredObj) {
+            filteredData.push(getBarObj(filteredObj, key))
+        }
+        return filteredData;
+    }
+
+    function filterPositionData(data: any) {
+        const notZeroVals = Object.keys(data).filter(key => data[key] !== 0);
+        const legNames = ['purchaseLegSummary', 'saleLegSummary'];
+        const filteredPosition:any = {};
+        console.log("filter: ", Object.keys(data).filter(key => notZeroVals.includes(key)));
+        
+        legNames.forEach(leg => {
+            filteredPosition[leg] = filterLegData(data[leg])
+        })
+
+        filteredPosition.margin = getBarObj(data, 'margin');
+        return filteredPosition;
+    }
+    console.log("positionData: ", positionData);
+    console.log('filterPosition: ', filterPositionData(positionData));
 
     function calculateBarPositions(data:any) {
         var cumulative = 0;
