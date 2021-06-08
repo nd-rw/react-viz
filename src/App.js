@@ -1,5 +1,5 @@
 import './App.css';
-import Tooltip from './components/Tooltip';
+import WaterfallChart from './components/WaterfallChart';
 
 function App() {
   return (
@@ -9,7 +9,7 @@ function App() {
           Economics Waterfall Chart
         </p>
         <div style={{padding:'50px'}}>
-          <Tooltip/>
+          <WaterfallChart/>
         </div>
 
       </header>

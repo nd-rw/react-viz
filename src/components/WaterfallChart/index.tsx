@@ -1,6 +1,6 @@
 import React from 'react';
-import { AxisBottom } from '@visx/axis';
-import { scaleBand } from '@visx/scale'
+import { AxisBottom, AxisLeft } from '@visx/axis';
+import { scaleBand, scaleLinear } from '@visx/scale'
 import { Box } from '@chakra-ui/react'
 
 
@@ -59,7 +59,7 @@ const legData = {
 
 const barColourTypes: { [index: string]: any } = { total: '#006999', revenue: '#4CB3AB', cost: '#CA6E79'}
 
-export default function Tooltip() {
+export default function WaterfallChart() {
 
     const width = 800 - margin.left - margin.right;
     const height = 400 - margin.top - margin.bottom;
@@ -67,12 +67,8 @@ export default function Tooltip() {
     const bandNames = ['purchase cost', 'transport', 'tax', 'total'];
     const bAmounts: {[index: string]:any} = {'purchase cost': 200, 'transport': 80, 'tax': 40, 'total': 80};
     const bColours: {[index: string]:any} = {'purchase cost': 'red', 'transport': 'orange', 'tax': 'pink', 'total': 'green'};
-    const scaleVal = scaleBand({
-        domain: bandNames,
-        range: [0, width],
-    })
 
-    console.log(scaleVal('tax'));
+
 
     function getHeight(key: string) {
         if (key === 'purchase cost') {
@@ -89,9 +85,9 @@ export default function Tooltip() {
     }
 
     function getXPos(metric: string, width: number) {
-        const scaleValue = scaleVal(metric) ?? 0;
-        const val = 75 - (width / 2);
-        return scaleValue + val;
+        const scaleValue = scaleVal(metric) || 0;
+        const val = (width / 2);
+        return scaleValue  + margin.left - (val);
     }
 
     function getYPos(metric: string) {
@@ -116,6 +112,7 @@ export default function Tooltip() {
     }
 
     const isNegative = (number: number) => { return number < 0 ? true : false };
+    const formatLeftAxis = (identifier: number) => identifier;
     
 
     const getBarObj = (filteredObj: any, key: string) => { return { name: key, value: filteredObj[key], type: getBarType(filteredObj, key)} }
@@ -150,17 +147,23 @@ export default function Tooltip() {
         filteredPosition.margin = getBarObj(data, 'margin');
         return filteredPosition;
     }
-    console.log("positionData: ", positionData);
-    console.log('filterPosition: ', filterPositionData(positionData));
+
+    const filteredData = filterLegData(legData);
+    const barPositions = calculateBarPositions(filteredData);
+
+    console.log("filteredData: ", filteredData);
+    console.log("barPositions: ", barPositions);
 
     function calculateBarPositions(data:any) {
         var cumulative = 0;
         var dataArr: any = [];
         for (var i = 0; i < data.length; i++) {
-            dataArr[i].start = cumulative;
+            // fix any type
+            let barObj:any = {}
+            barObj.start = cumulative;
             cumulative += data[i].value;
-            dataArr[i].end = cumulative;
-            dataArr[i].class = ( data[i].value >= 0 ) ? 'positive' : 'negative'
+            barObj.end = cumulative;
+            dataArr.push(barObj);
         }
         dataArr.push({
             name: 'Total',
@@ -173,17 +176,32 @@ export default function Tooltip() {
         return dataArr;
     }
 
+    const scaleVal = scaleBand({
+        domain: bandNames,
+        range: [0, width],
+        paddingOuter: 0.4,
+        paddingInner: 1,
+    });
+
+
+    const yScale = scaleLinear({
+        range: [(height - margin.bottom), 50],
+        domain: [Math.min(...barPositions.map((obj: { start: number; }) => obj.start)), 300],
+        round: true,
+    });
+
 
     return (
-        <div style={{ backgroundColor: 'lightgrey', width: width + 100 }}>
+        <div style={{ backgroundColor: 'lightgrey', width: width + 300, height: height + 300 }}>
             {/* <div style={{height: '100px', width: '100%', backgroundColor: 'steelblue'}}></div> */}
-            <svg width={width} height={height}>
+            <svg width={width} height={height} style={{marginTop: '100px'}}>
                 {bandNames.map(val => (<Box
                     as="rect"
+                    key={val}
                     x={getXPos(val, 20)} y={height - (getHeight(val) + margin.top)} width={20} height={getHeight(val)} fill={bColours[val]}
                 />))}
-
-                <AxisBottom top={height - margin.top} scale={scaleVal} label="adjustments" stroke="black" tickStroke="black" />
+                <AxisBottom left={margin.left} top={height -margin.top} scale={scaleVal} label="adjustments" stroke="black" tickStroke="black" />
+                <AxisLeft left={margin.left + 50} scale={yScale} numTicks={10} />
             </svg>
         </div>
     )
