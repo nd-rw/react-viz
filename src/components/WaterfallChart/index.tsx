@@ -13,10 +13,10 @@ import { Box } from '@chakra-ui/react'
 // use d3 example to lift bars to required y-value
 
 const margin = {
-    top: 45,
+    top: 50,
     right: 150,
-    bottom: 20,
-    left: 50,
+    bottom: 50,
+    left: 100,
 };
 
 const positionData = {
@@ -61,10 +61,10 @@ const barColourTypes: { [index: string]: any } = { total: '#006999', revenue: '#
 
 export default function WaterfallChart() {
 
-    const width = 800 - margin.left - margin.right;
-    const height = 400 - margin.top - margin.bottom;
+    const width = 400;
+    const height = 400;
 
-    const bandNames = ['purchase cost', 'transport', 'tax', 'total'];
+    const bandNames = ['sales revenue', 'transport', 'port charges', 'fuel costs', 'net revenue'];
     const bAmounts: {[index: string]:any} = {'purchase cost': 200, 'transport': 80, 'tax': 40, 'total': 80};
     const bColours: {[index: string]:any} = {'purchase cost': 'red', 'transport': 'orange', 'tax': 'pink', 'total': 'green'};
 
@@ -90,20 +90,6 @@ export default function WaterfallChart() {
         return scaleValue  + margin.left - (val);
     }
 
-    function getYPos(metric: string) {
-        if (metric === 'purchase cost' || metric === 'total') {
-            return 0;
-        }
-        const priorMetricIndex = bandNames.indexOf(metric) - 1;
-        const priorMetricAmount = bAmounts[bandNames[priorMetricIndex]];
-        const priorMetricTopY ='blah';
-        // use loop or w/e from d3 example instead of writing own algo
-        // fun exercise tho :--)
-
-        const currentMetricAmount = bAmounts[metric];
-        const difference = priorMetricAmount - currentMetricAmount;
-    }
-
     function getBarType(filteredObj:any, key:string) {
         if (key === 'total' || key === 'margin') {
             return 'total'
@@ -112,7 +98,10 @@ export default function WaterfallChart() {
     }
 
     const isNegative = (number: number) => { return number < 0 ? true : false };
-    const formatLeftAxis = (identifier: number) => identifier;
+    // const formatLeftAxis = (identifier: any) => {
+    //     return identifier === 0 ? '' : identifier
+    // };
+    const formatLeftAxis = (identifier: any) => {return identifier};
     
 
     const getBarObj = (filteredObj: any, key: string) => { return { name: key, value: filteredObj[key], type: getBarType(filteredObj, key)} }
@@ -153,6 +142,9 @@ export default function WaterfallChart() {
 
     console.log("filteredData: ", filteredData);
     console.log("barPositions: ", barPositions);
+    console.log("-margin.bottom - 5: ", -margin.bottom - 5);
+
+    
 
     function calculateBarPositions(data:any) {
         var cumulative = 0;
@@ -184,24 +176,64 @@ export default function WaterfallChart() {
     });
 
 
-    const yScale = scaleLinear({
-        range: [(height - margin.bottom), 50],
-        domain: [Math.min(...barPositions.map((obj: { start: number; }) => obj.start)), 300],
+    const domainY = [Math.min(...barPositions.map((obj: { start: number; }) => obj.start)), 300];
+
+
+    const saleYScale = scaleLinear({
+        range: [height - margin.bottom, margin.top],
+        domain: [0, 100],
         round: true,
     });
 
+    console.log("0: ", saleYScale(0));
+    console.log("1: ", saleYScale(1));
+    console.log("6: ", saleYScale(6));
+    console.log("12: ", saleYScale(12));
+    console.log(saleYScale);
+
+    const getYCoords = (value: number, height: number) => {
+        return saleYScale(value) - height;
+    };
+
+    const getHeightY = (value: number) => {
+        return height - saleYScale(value) - margin.bottom;
+    };
+
+    const SellLeg = <>
+            <Box
+                as="rect"
+                key={'sales revenue'}
+                x={getXPos('sales revenue', 20)} y={getYCoords(0, getHeightY(100))} width={20} height={getHeightY(100)} fill={barColourTypes.revenue}
+            />
+            <Box
+                as="rect"
+                key={'transport'}
+                x={getXPos('transport', 20)} y={getYCoords(0, getHeightY(100))} width={20} height={getHeightY(5)} fill={barColourTypes.cost}
+            />
+            <Box
+                as="rect"
+                key={'port charges'}
+                x={getXPos('port charges', 20)} y={getYCoords(0, getHeightY(95))} width={20} height={getHeightY(23)} fill={barColourTypes.cost}
+            />
+            <Box
+                as="rect"
+                key={'fuel costs'}
+                x={getXPos('fuel costs', 20)} y={getYCoords(0, getHeightY(72))} width={20} height={getHeightY(6)} fill={barColourTypes.cost}
+            />
+            <Box
+                as="rect"
+                key={'net revenue'}
+                x={getXPos('net revenue', 20)} y={getYCoords(0, getHeightY(66))} width={20} height={getHeightY(66)} fill={barColourTypes.total}
+            />
+            <AxisBottom left={margin.left} top={height - margin.bottom} scale={scaleVal} stroke="black" tickStroke="black" />
+        <AxisLeft left={margin.left} scale={saleYScale} numTicks={10} tickFormat={formatLeftAxis} />
+        </>;
 
     return (
         <div style={{ backgroundColor: 'lightgrey', width: width + 300, height: height + 300 }}>
             {/* <div style={{height: '100px', width: '100%', backgroundColor: 'steelblue'}}></div> */}
-            <svg width={width} height={height} style={{marginTop: '100px'}}>
-                {bandNames.map(val => (<Box
-                    as="rect"
-                    key={val}
-                    x={getXPos(val, 20)} y={height - (getHeight(val) + margin.top)} width={20} height={getHeight(val)} fill={bColours[val]}
-                />))}
-                <AxisBottom left={margin.left} top={height -margin.top} scale={scaleVal} label="adjustments" stroke="black" tickStroke="black" />
-                <AxisLeft left={margin.left + 50} scale={yScale} numTicks={10} />
+            <svg width={width + 300} height={height} style={{marginTop: '100px'}}>
+                {SellLeg}
             </svg>
         </div>
     )
