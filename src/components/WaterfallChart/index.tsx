@@ -164,26 +164,9 @@ export default function WaterfallChart() {
         return dataArr;
     }
 
-    const scaleVal = scaleBand({
-        domain: bandNames,
-        range: [0, width],
-        paddingOuter: 0.4,
-        paddingInner: 1,
-    });
+    
 
-
-    const domainY = [Math.min(...barPositions.map((obj: { start: number; }) => obj.start)), 300];
-
-
-    const saleYScale = scaleLinear({
-        range: [height - margin.bottom, margin.top],
-        domain: [0, 100],
-        round: true,
-    });
-
-    console.log("0: ", saleYScale(0));
-    console.log("50: ", saleYScale(50));
-    console.log("100: ", saleYScale(100));
+   
 
     const getYCoords = (height: number) => {
         return saleYScale(0) - height;
@@ -253,7 +236,6 @@ export default function WaterfallChart() {
     }
 
     function SaleLeg({ salesArray}: SaleLegTypes) {
-        console.log("adjustments: ", salesArray);
         let cumulative:number = 0;
         const SaleLegBars = salesArray.map((item:any, index:number) => {
             if (index === 0) {
@@ -261,20 +243,21 @@ export default function WaterfallChart() {
                 return <Box
                     as="rect"
                     key={item.name + '-bar'}
-                    x={getXPos(item.name, barWidth)} y={getYCoords(getHeightY(item.value))} width={barWidth} height={getHeightY(item.value)} fill={item.fill}
+                    x={getXPos(item.name, barWidth)} y={getYCoords(getHeightY(item.value))} width={barWidth} height={getHeightY(Math.abs(item.value))} fill={item.fill}
                 />
             }
-            asdfadsfas;
             // TODO: x-axis is not mapping properly because name needs to max axis names defined in getXPos!!!
             const bar = <Box
                 as="rect"
                 key={item.name + '-bar'}
-                x={getXPos(item.name, barWidth)} y={getYCoords(getHeightY(cumulative))} width={barWidth} height={getHeightY(item.value)} fill={item.fill}
+                x={getXPos(item.name, barWidth)} y={getYCoords(getHeightY(cumulative))} width={barWidth} height={getHeightY(Math.abs(item.value))} fill={item.fill}
             />
 
             cumulative += item.value;
             return bar;
         })
+
+        console.log("SaleLegBars: ", SaleLegBars);
 
         return (
             <>
@@ -285,6 +268,24 @@ export default function WaterfallChart() {
         )
     }
 
+    const categoryNames = orderedSalesLegArray.map((item: { name: any; }) => item.name);
+
+    const scaleVal = scaleBand({
+        domain: categoryNames,
+        range: [0, width],
+        paddingOuter: 0.4,
+        paddingInner: 1,
+    });
+
+
+    const domainY = [Math.min(...barPositions.map((obj: { start: number; }) => obj.start)), 300];
+
+
+    const saleYScale = scaleLinear({
+        range: [height - margin.bottom, margin.top],
+        domain: [0, 100],
+        round: true,
+    });
 
     const MockSellLeg = <>
             <Box
@@ -315,6 +316,10 @@ export default function WaterfallChart() {
             <AxisBottom left={margin.left} top={height - margin.bottom} scale={scaleVal} stroke="black" tickStroke="black" />
             <AxisLeft left={margin.left} scale={saleYScale} numTicks={10} tickFormat={formatLeftAxis} />
         </>;
+
+    console.log("0: ", saleYScale(0));
+    console.log("50: ", saleYScale(50));
+    console.log("100: ", saleYScale(100));
 
     return (
         <div style={{ backgroundColor: 'lightgrey', width: width + 300, height: height + 300 }}>
