@@ -2,6 +2,7 @@ import React from 'react';
 import { AxisBottom, AxisLeft } from '@visx/axis';
 import { scaleBand, scaleLinear } from '@visx/scale'
 import { Box } from '@chakra-ui/react'
+import { pickBy } from 'lodash';
 
 
 // TODO
@@ -57,12 +58,13 @@ const legData = {
     "other": 0
 };
 
-const barColourTypes: { [index: string]: any } = { total: '#006999', revenue: '#4CB3AB', cost: '#CA6E79'}
+const barColourTypes: { [index: string]: any } = { total: '#006999', revenue: '#4CB3AB', cost: '#CA6E79', decrease: '#CA6E79', increase: '#4CB3AB'}
 
 export default function WaterfallChart() {
 
     const width = 400;
     const height = 400;
+    const barWidth = 20;
 
     const bandNames = ['sales revenue', 'transport', 'port charges', 'fuel costs', 'net revenue'];
     const bAmounts: {[index: string]:any} = {'purchase cost': 200, 'transport': 80, 'tax': 40, 'total': 80};
@@ -140,12 +142,6 @@ export default function WaterfallChart() {
     const filteredData = filterLegData(legData);
     const barPositions = calculateBarPositions(filteredData);
 
-    console.log("filteredData: ", filteredData);
-    console.log("barPositions: ", barPositions);
-    console.log("-margin.bottom - 5: ", -margin.bottom - 5);
-
-    
-
     function calculateBarPositions(data:any) {
         var cumulative = 0;
         var dataArr: any = [];
@@ -186,54 +182,146 @@ export default function WaterfallChart() {
     });
 
     console.log("0: ", saleYScale(0));
-    console.log("1: ", saleYScale(1));
-    console.log("6: ", saleYScale(6));
-    console.log("12: ", saleYScale(12));
-    console.log(saleYScale);
+    console.log("50: ", saleYScale(50));
+    console.log("100: ", saleYScale(100));
 
-    const getYCoords = (value: number, height: number) => {
-        return saleYScale(value) - height;
+    const getYCoords = (height: number) => {
+        return saleYScale(0) - height;
     };
 
     const getHeightY = (value: number) => {
         return height - saleYScale(value) - margin.bottom;
     };
 
-    const SellLeg = <>
+    const saleLegSummary = {
+        "total": 66,
+        "purchaseCosts": 0,
+        "salesRevenue": 100,
+        "transport": -5,
+        "portCharges": -23,
+        "fuelCosts": -6,
+        "repositioning": 0,
+        "canal": 0,
+        "other": 0
+    }
+
+    interface SaleLegObject {
+        "total": number,
+        "purchaseCosts": number,
+        "salesRevenue": number,
+        "transport": number,
+        "portCharges": number,
+        "fuelCosts": number,
+        "repositioning": number,
+        "canal": number,
+        "other": number
+    }
+
+    function getAdjustmentBars(adjustments: any) {
+        return Object.keys(adjustments).map(adj => {
+            return { name: adj, value: adjustments[adj], fill: adjustments[adj] > 0 ? barColourTypes.increase : barColourTypes.decrease}
+        })
+    }
+
+    function getSaleLegObjs(data: SaleLegObject) {
+        const notAdjustmentKeys = ["total", "salesRevenue"];
+        const notZeroVals = pickBy(data, (value, key) => value !== 0 || notAdjustmentKeys.includes(key));
+        const netRevenue = { name: 'Net Revenue', value: notZeroVals.total, fill: barColourTypes.revenue};
+        const salesRevenue = { name: 'Sales Revenue', value: notZeroVals.salesRevenue, fill: barColourTypes.total };
+        const adjustments = getAdjustmentBars(pickBy(notZeroVals, (value, key) => !notAdjustmentKeys.includes(key)));
+        return [salesRevenue, adjustments, netRevenue];
+    }
+
+    const [salesRevenue, adjustments, netRevenue] = getSaleLegObjs(saleLegSummary);
+
+    function orderSalesLegArray(salesRevenue: any, adjustments: any, netRevenue:any) {
+        let salesArray = adjustments;
+
+        // place the sales revenue at the start of the array because we want to draw it first
+        salesArray.unshift(salesRevenue);
+
+        // place the netRevenue at the end of the array becaus we want to draw it last
+        salesArray.push(netRevenue);
+
+        return salesArray
+    }
+
+    const orderedSalesLegArray = orderSalesLegArray(salesRevenue, adjustments, netRevenue);
+
+    interface SaleLegTypes {
+        salesArray: any;
+    }
+
+    function SaleLeg({ salesArray}: SaleLegTypes) {
+        console.log("adjustments: ", salesArray);
+        let cumulative:number = 0;
+        const SaleLegBars = salesArray.map((item:any, index:number) => {
+            if (index === 0) {
+                cumulative += item.value;
+                return <Box
+                    as="rect"
+                    key={item.name + '-bar'}
+                    x={getXPos(item.name, barWidth)} y={getYCoords(getHeightY(item.value))} width={barWidth} height={getHeightY(item.value)} fill={item.fill}
+                />
+            }
+            asdfadsfas;
+            // TODO: x-axis is not mapping properly because name needs to max axis names defined in getXPos!!!
+            const bar = <Box
+                as="rect"
+                key={item.name + '-bar'}
+                x={getXPos(item.name, barWidth)} y={getYCoords(getHeightY(cumulative))} width={barWidth} height={getHeightY(item.value)} fill={item.fill}
+            />
+
+            cumulative += item.value;
+            return bar;
+        })
+
+        return (
+            <>
+            {SaleLegBars}
+            <AxisBottom left={margin.left} top={height - margin.bottom} scale={scaleVal} stroke="black" tickStroke="black" />
+            <AxisLeft left={margin.left} scale={saleYScale} numTicks={10} tickFormat={formatLeftAxis} />
+            </>
+        )
+    }
+
+
+    const MockSellLeg = <>
             <Box
                 as="rect"
                 key={'sales revenue'}
-                x={getXPos('sales revenue', 20)} y={getYCoords(0, getHeightY(100))} width={20} height={getHeightY(100)} fill={barColourTypes.revenue}
+                x={getXPos('sales revenue', barWidth)} y={getYCoords(getHeightY(100))} width={barWidth} height={getHeightY(100)} fill={barColourTypes.revenue}
             />
             <Box
                 as="rect"
                 key={'transport'}
-                x={getXPos('transport', 20)} y={getYCoords(0, getHeightY(100))} width={20} height={getHeightY(5)} fill={barColourTypes.cost}
+                x={getXPos('transport', barWidth)} y={getYCoords(getHeightY(100))} width={barWidth} height={getHeightY(5)} fill={barColourTypes.cost}
             />
             <Box
                 as="rect"
                 key={'port charges'}
-                x={getXPos('port charges', 20)} y={getYCoords(0, getHeightY(95))} width={20} height={getHeightY(23)} fill={barColourTypes.cost}
+                x={getXPos('port charges', barWidth)} y={getYCoords(getHeightY(95))} width={barWidth} height={getHeightY(23)} fill={barColourTypes.cost}
             />
             <Box
                 as="rect"
                 key={'fuel costs'}
-                x={getXPos('fuel costs', 20)} y={getYCoords(0, getHeightY(72))} width={20} height={getHeightY(6)} fill={barColourTypes.cost}
+                x={getXPos('fuel costs', barWidth)} y={getYCoords(getHeightY(72))} width={barWidth} height={getHeightY(6)} fill={barColourTypes.cost}
             />
             <Box
                 as="rect"
                 key={'net revenue'}
-                x={getXPos('net revenue', 20)} y={getYCoords(0, getHeightY(66))} width={20} height={getHeightY(66)} fill={barColourTypes.total}
+                x={getXPos('net revenue', barWidth)} y={getYCoords(getHeightY(66))} width={barWidth} height={getHeightY(66)} fill={barColourTypes.total}
             />
             <AxisBottom left={margin.left} top={height - margin.bottom} scale={scaleVal} stroke="black" tickStroke="black" />
-        <AxisLeft left={margin.left} scale={saleYScale} numTicks={10} tickFormat={formatLeftAxis} />
+            <AxisLeft left={margin.left} scale={saleYScale} numTicks={10} tickFormat={formatLeftAxis} />
         </>;
 
     return (
         <div style={{ backgroundColor: 'lightgrey', width: width + 300, height: height + 300 }}>
             {/* <div style={{height: '100px', width: '100%', backgroundColor: 'steelblue'}}></div> */}
             <svg width={width + 300} height={height} style={{marginTop: '100px'}}>
-                {SellLeg}
+                {/* <SaleLeg salesRevenue={salesRevenue} adjustments={adjustments} netRevenue={netRevenue}/> */}
+                <SaleLeg salesArray={orderedSalesLegArray} />
             </svg>
         </div>
     )
